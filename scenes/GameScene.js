@@ -188,8 +188,8 @@ class GameScene extends Phaser.Scene {
 
     if (overlapWidth < 14) {
       dropped.destroy();
-      this.flashMessage('MISSED!');
-      this.endGame();
+      this.flashMessage('TRY AGAIN!');
+      this.queueNextPancake();
       return;
     }
 
