@@ -19,6 +19,7 @@ class HardModeScene extends Phaser.Scene {
     this.gameEnded = false;
     this.direction = 1;
     this.currentSpeed = 280;
+    this.playerName = (this.scene.settings.data && this.scene.settings.data.name) || 'Anonymous';
 
     this.drawKitchen();
     this.createHud();
@@ -27,6 +28,7 @@ class HardModeScene extends Phaser.Scene {
 
     this.input.keyboard.on('keydown-SPACE', this.dropPancake, this);
     this.input.on('pointerdown', this.dropPancake, this);
+    this.input.keyboard.once('keydown-ESC', this.endGame, this);
   }
 
   update(time, delta) {
@@ -207,9 +209,12 @@ class HardModeScene extends Phaser.Scene {
     this.topX = newX;
     this.topWidth = newWidth;
     this.topY = newY;
-    this.score += perfect ? 2 : 1;
-    this.scoreText.setText(`STACK ${this.score}`);
-    this.flashMessage(perfect ? 'PERFECT!' : 'TRIMMED!');
+    const points = perfect
+      ? 100
+      : Math.round(100 * (overlapWidth / dropped.displayWidth));
+    this.score += points;
+    this.scoreText.setText(`SCORE ${this.score}`);
+    this.flashMessage(perfect ? 'PERFECT! +100' : `TRIMMED! +${points}`);
 
     if (this.topY < this.scrollLineY) {
       this.scrollStackForRoom(() => this.queueNextPancake());
@@ -326,7 +331,7 @@ class HardModeScene extends Phaser.Scene {
 
     this.gameEnded = true;
     this.time.delayedCall(500, () => {
-      this.scene.start('GameOverScene', { score: this.score });
+      this.scene.start('GameOverScene', { score: this.score, name: this.playerName, mode: 'Hard' });
     });
   }
 }
