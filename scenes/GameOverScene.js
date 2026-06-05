@@ -34,7 +34,7 @@ class GameOverScene extends Phaser.Scene {
     this.add.rectangle(400, 335, 554, 354, 0xfff8ee);
 
     // Leaderboard title
-    this.add.text(400, 140, '── TOP SCORES ──', {
+    this.add.text(400, 130, '── TOP SCORES ──', {
       fontSize: '19px',
       fill: '#7a4a1e',
       fontFamily: 'Courier New',

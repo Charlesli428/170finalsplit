@@ -20,6 +20,8 @@ class HardModeScene extends Phaser.Scene {
     this.direction = 1;
     this.currentSpeed = 280;
     this.playerName = (this.scene.settings.data && this.scene.settings.data.name) || 'Anonymous';
+    this.timerWarningStarted = false;
+    this.timerFinalShook = false;
 
     this.drawKitchen();
     this.createHud();
@@ -39,11 +41,11 @@ class HardModeScene extends Phaser.Scene {
     this.elapsedTime += delta / 1000;
     const remaining = Math.max(0, this.maxTime - this.elapsedTime);
     const stage = this.getStageSettings();
-    this.timerText.setText(`TIME ${Math.ceil(remaining)}`);
     this.stageText.setText(`TIER ${stage.tier}`);
-    this.timeBar.width = 220 * (remaining / this.maxTime);
+    this.updateTimerClock(remaining);
 
     if (remaining <= 0) {
+      this.finalShakeClock();
       this.endGame();
       return;
     }
@@ -93,26 +95,98 @@ class HardModeScene extends Phaser.Scene {
       fontStyle: 'bold'
     });
 
-    this.timerText = this.add.text(650, 28, 'TIME 30', {
-      fontSize: '22px',
-      fill: '#ead6b4',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-
     this.stageText = this.add.text(400, 28, 'TIER 1', {
       fontSize: '22px',
       fill: '#ff6b6b',
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
-    this.add.rectangle(650, 62, 224, 12, 0x8a5a32).setOrigin(0.5);
-    this.timeBar = this.add.rectangle(540, 62, 220, 8, 0xff4444).setOrigin(0, 0.5);
+    this.createTimerClock(670, 50, 0xff4444);
 
     this.add.text(400, 562, 'SPACE / CLICK', {
       fontSize: '20px',
       fill: '#ead6b4',
       fontStyle: 'bold'
     }).setOrigin(0.5);
+  }
+
+  createTimerClock(x, y, fillColor) {
+    this.timerClockColor = fillColor;
+    this.timerClock = this.add.container(x, y);
+    this.timerClockBase = this.add.circle(0, 0, 26, 0x8a5a32);
+    this.timerClockBase.setStrokeStyle(3, 0xead6b4);
+    this.timerClockFill = this.add.graphics();
+    this.timerClockHand = this.add.line(0, 0, 0, -4, 0, -20, 0xead6b4, 1);
+    this.timerClockText = this.add.text(0, 1, `${this.maxTime}`, {
+      fontSize: '15px',
+      fill: '#fff8ee',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    this.timerClock.add([
+      this.timerClockBase,
+      this.timerClockFill,
+      this.timerClockHand,
+      this.timerClockText
+    ]);
+    this.updateTimerClock(this.maxTime);
+  }
+
+  updateTimerClock(remaining) {
+    const elapsedRatio = Phaser.Math.Clamp((this.maxTime - remaining) / this.maxTime, 0, 1);
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + elapsedRatio * Math.PI * 2;
+
+    this.timerClockFill.clear();
+    if (elapsedRatio > 0.001) {
+      this.timerClockFill.fillStyle(this.timerClockColor, 1);
+      this.timerClockFill.beginPath();
+      this.timerClockFill.moveTo(0, 0);
+      this.timerClockFill.slice(0, 0, 22, startAngle, endAngle, false);
+      this.timerClockFill.closePath();
+      this.timerClockFill.fillPath();
+    }
+
+    this.timerClockHand.setRotation(elapsedRatio * Math.PI * 2);
+    this.timerClockText.setText(`${Math.ceil(remaining)}`);
+
+    if (remaining <= 5 && !this.timerWarningStarted) {
+      this.timerWarningStarted = true;
+      this.timerWarningTween = this.tweens.add({
+        targets: this.timerClock,
+        angle: { from: -5, to: 5 },
+        scaleX: { from: 1, to: 1.08 },
+        scaleY: { from: 1, to: 1.08 },
+        duration: 80,
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+
+  finalShakeClock() {
+    if (this.timerFinalShook || !this.timerClock) {
+      return;
+    }
+
+    this.timerFinalShook = true;
+    if (this.timerWarningTween) {
+      this.timerWarningTween.stop();
+    }
+
+    this.timerClock.setAngle(0);
+    this.timerClock.setScale(1);
+    this.tweens.add({
+      targets: this.timerClock,
+      x: '+=10',
+      angle: 14,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 55,
+      yoyo: true,
+      repeat: 5,
+      ease: 'Sine.easeInOut'
+    });
   }
 
   createStackBase() {
@@ -205,7 +279,12 @@ class HardModeScene extends Phaser.Scene {
     }
 
     dropped.destroy();
-    this.addPancakePiece(newX, newY, newWidth, perfect ? 0xffd17b : 0xf0b85f);
+    const placedPancake = this.addPancakePiece(newX, newY, newWidth, perfect ? 0xffd17b : 0xf0b85f);
+    if (perfect) {
+      this.showPerfectSlam(newX, newY + this.pancakeHeight / 2, newWidth, placedPancake);
+    }
+    const impactOffset = Math.abs(dropped.x - this.topX);
+
     this.topX = newX;
     this.topWidth = newWidth;
     this.topY = newY;
@@ -217,10 +296,14 @@ class HardModeScene extends Phaser.Scene {
     this.flashMessage(perfect ? 'PERFECT! +100' : `TRIMMED! +${points}`);
 
     if (this.topY < this.scrollLineY) {
-      this.scrollStackForRoom(() => this.queueNextPancake());
+      this.scrollStackForRoom(() => {
+        this.jiggleStack(impactOffset, perfect, perfect ? placedPancake : null);
+        this.queueNextPancake();
+      });
       return;
     }
 
+    this.jiggleStack(impactOffset, perfect, perfect ? placedPancake : null);
     this.queueNextPancake();
   }
 
@@ -234,6 +317,11 @@ class HardModeScene extends Phaser.Scene {
   scrollStackForRoom(onComplete) {
     const scrollDistance = this.scrollLineY - this.topY;
     this.topY += scrollDistance;
+    this.stackPieces.forEach((piece) => {
+      this.tweens.killTweensOf(piece);
+      piece.setAngle(0);
+      piece.setScale(1);
+    });
 
     this.tweens.add({
       targets: this.stackPieces,
@@ -296,6 +384,100 @@ class HardModeScene extends Phaser.Scene {
       duration: 450,
       ease: 'Quad.easeIn',
       onComplete: () => crumb.destroy()
+    });
+  }
+
+  showPerfectSlam(x, y, width, pancake) {
+    pancake.setScale(1.12, 0.68);
+    this.tweens.add({
+      targets: pancake,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 230,
+      ease: 'Back.easeOut'
+    });
+
+    const flash = this.add.ellipse(x, y, width * 0.9, 18, 0xfff1a8, 0.42);
+    flash.setDepth(8);
+    this.tweens.add({
+      targets: flash,
+      scaleX: 1.18,
+      scaleY: 2.2,
+      alpha: 0,
+      duration: 220,
+      ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy()
+    });
+
+    const ring = this.add.ellipse(x, y, width * 1.05, 16);
+    ring.setStrokeStyle(5, 0xfff1a8, 1);
+    ring.setDepth(8);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 1.45,
+      scaleY: 2.45,
+      alpha: 0,
+      duration: 360,
+      ease: 'Quad.easeOut',
+      onComplete: () => ring.destroy()
+    });
+
+    for (let i = 0; i < 24; i += 1) {
+      const sparkleX = x + Phaser.Math.Between(-width * 0.56, width * 0.56);
+      const sparkle = this.add.star(sparkleX, y, 5, 4, 12, 0xfff1a8);
+      sparkle.setDepth(9);
+      sparkle.setAngle(Phaser.Math.Between(0, 180));
+      sparkle.setScale(Phaser.Math.FloatBetween(0.75, 1.25));
+
+      this.tweens.add({
+        targets: sparkle,
+        x: sparkleX + Phaser.Math.Between(-44, 44),
+        y: y + Phaser.Math.Between(-56, -16),
+        angle: sparkle.angle + Phaser.Math.Between(120, 300),
+        scale: 0,
+        alpha: 0,
+        duration: Phaser.Math.Between(420, 680),
+        ease: 'Quad.easeOut',
+        onComplete: () => sparkle.destroy()
+      });
+    }
+  }
+
+  jiggleStack(offset, perfect, skipPiece) {
+    const strength = perfect ? 0.75 : Phaser.Math.Clamp(offset / 35, 0.8, 1.55);
+    const piecesFromTop = [...this.stackPieces].reverse();
+
+    piecesFromTop.forEach((piece, indexFromTop) => {
+      if (piece === skipPiece) {
+        return;
+      }
+
+      const influence = Math.max(0.18, 1 - indexFromTop * 0.13);
+      const originalY = piece.y;
+      const squash = 0.085 * strength * influence;
+      const sink = 3.2 * strength * influence;
+      const delay = indexFromTop * 12;
+
+      this.tweens.killTweensOf(piece);
+      piece.setAngle(0);
+      piece.setScale(1);
+
+      this.tweens.add({
+        targets: piece,
+        y: originalY + sink,
+        scaleX: 1 + squash * 0.7,
+        scaleY: 1 - squash,
+        duration: 72,
+        delay,
+        yoyo: true,
+        repeat: 1,
+        ease: 'Sine.easeOut',
+        onComplete: () => {
+          piece.y = originalY;
+          piece.setAngle(0);
+          piece.setScale(1);
+        }
+      });
     });
   }
 
