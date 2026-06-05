@@ -1,6 +1,6 @@
-class GameScene extends Phaser.Scene {
+class HardModeScene extends Phaser.Scene {
   constructor() {
-    super({ key: 'GameScene' });
+    super({ key: 'HardModeScene' });
   }
 
   create() {
@@ -18,7 +18,7 @@ class GameScene extends Phaser.Scene {
     this.dropLocked = false;
     this.gameEnded = false;
     this.direction = 1;
-    this.currentSpeed = 210;
+    this.currentSpeed = 280;
 
     this.drawKitchen();
     this.createHud();
@@ -62,12 +62,12 @@ class GameScene extends Phaser.Scene {
 
   drawKitchen() {
     this.add.rectangle(400, 300, 800, 600, 0xf8dfbd);
-    this.add.rectangle(400, 320, 600, 470, 0x7ac2d4, 0.2);
+    this.add.rectangle(400, 320, 600, 470, 0xd47a7a, 0.2);
     this.add.rectangle(400, 565, 800, 70, 0x2a211c);
     this.add.rectangle(400, 70, 650, 100, 0x251f1d);
-    this.add.text(400, 70, 'PANCAKE STACKER', {
+    this.add.text(400, 70, 'HARD MODE', {
       fontSize: '36px',
-      fill: '#87ecff',
+      fill: '#ff6b6b',
       fontFamily: 'Courier New',
       fontStyle: 'bold'
     }).setOrigin(0.5);
@@ -99,12 +99,12 @@ class GameScene extends Phaser.Scene {
 
     this.stageText = this.add.text(400, 28, 'TIER 1', {
       fontSize: '22px',
-      fill: '#ead6b4',
+      fill: '#ff6b6b',
       fontStyle: 'bold'
     }).setOrigin(0.5, 0);
 
     this.add.rectangle(650, 62, 224, 12, 0x8a5a32).setOrigin(0.5);
-    this.timeBar = this.add.rectangle(540, 62, 220, 8, 0x2bbbd8).setOrigin(0, 0.5);
+    this.timeBar = this.add.rectangle(540, 62, 220, 8, 0xff4444).setOrigin(0, 0.5);
 
     this.add.text(400, 562, 'SPACE / CLICK', {
       fontSize: '20px',
@@ -143,19 +143,19 @@ class GameScene extends Phaser.Scene {
   }
 
   getStageSettings() {
-    if (this.elapsedTime < 7.5) {
-      return { tier: 1, width: 210, speed: 205 };
+    if (this.elapsedTime < 6) {
+      return { tier: 1, width: 165, speed: 280 };
     }
 
-    if (this.elapsedTime < 15) {
-      return { tier: 2, width: 165, speed: 260 };
+    if (this.elapsedTime < 12) {
+      return { tier: 2, width: 120, speed: 360 };
     }
 
-    if (this.elapsedTime < 22.5) {
-      return { tier: 3, width: 120, speed: 330 };
+    if (this.elapsedTime < 20) {
+      return { tier: 3, width: 74, speed: 450 };
     }
 
-    return { tier: 4, width: 74, speed: 410 };
+    return { tier: 4, width: 46, speed: 550 };
   }
 
   dropPancake() {

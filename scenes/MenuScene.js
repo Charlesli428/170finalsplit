@@ -14,7 +14,13 @@ class MenuScene extends Phaser.Scene {
       fill: '#555'
     }).setOrigin(0.5);
 
+    this.add.text(400, 480, 'Press ENTER for Hard Mode', {
+      fontSize: '18px',
+      fill: '#cc2222'
+    }).setOrigin(0.5);
+
     this.input.keyboard.once('keydown-SPACE', () => this.scene.start('GameScene'));
+    this.input.keyboard.once('keydown-ENTER', () => this.scene.start('HardModeScene'));
     this.input.once('pointerdown', () => this.scene.start('GameScene'));
   }
 }
